@@ -1,0 +1,55 @@
+const AWS = require('aws-sdk');
+const appstream = new AWS.AppStream;
+
+exports.handler = (event, context, callback) => {
+    const username = ['cognito:username'];
+    
+    var params = {
+        FleetName: 'movieflex', /* required */
+        StackName: 'movieflex', /* required */
+        UserId: 'admin',
+        Validity: 5
+
+    };
+
+    createas2streamingurl(params, context.awsRequestId, callback);
+
+};
+
+function errorResponse(errorMessage, awsRequestId, callback) { //Function for handling error messaging back to client
+    callback(null, {
+        statusCode: 500,
+        body: JSON.stringify({
+            Error: errorMessage,
+            Reference: awsRequestId,
+        }),
+        headers: {
+            'Access-Control-Allow-Origin': 'http://movieflex-alexis-collier.s3-website-us-east-1.amazonaws.com', //This should be the domain of the website that originated the request, example: amazonaws.com 
+        },
+    });
+}
+
+function createas2streamingurl(params, awsRequestId, callback) {
+    var request = appstream.createStreamingURL(params);
+    request.
+        on('success', function (response) {
+            console.log("Success. AS2 Streaming URL created.");
+            var url = response.data.StreamingURL;
+            callback(null, {
+                statusCode: 201,
+                body: JSON.stringify({
+                    Message: url,
+                    Reference: awsRequestId,
+                }),
+                headers: {
+                    'Access-Control-Allow-Origin': 'http://movieflex-alexis-collier.s3-website-us-east-1.amazonaws.com', //This should be the domain of the website that originated the request, example: amazonaws.com
+                },
+            });
+        }).
+        on('error', function (response) {
+            console.log("Error: " + JSON.stringify(response.message));
+            errorResponse('Error creating AS2 streaming URL.', awsRequestId, callback);
+
+        }).
+        send();
+}
